@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>E-Commerce Store</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f9f9fb; }
+    header {
+      background:#0f172a; color:#fff; padding:12px 20px;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    header a { color:#fff; margin-left:12px; text-decoration:none; }
+    .container { max-width:1100px; margin:20px auto; padding:10px; }
+    .products {
+      display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+      gap:16px;
+    }
+    .card {
+      border:1px solid #ddd; border-radius:8px; padding:12px;
+      background:#fff; text-align:center; transition:.2s;
+    }
+    .card:hover { box-shadow:0 2px 8px rgba(0,0,0,.2); transform:translateY(-3px); }
+    .card img { width:100%; height:160px; object-fit:cover; border-radius:6px; }
+    button {
+      background:#0366d6; color:#fff; border:none; padding:8px 12px;
+      border-radius:6px; cursor:pointer;
+    }
+    button:hover { background:#024ea2; }
+    table { width:100%; border-collapse:collapse; margin-top:15px; }
+    th,td { border-bottom:1px solid #eee; padding:8px; text-align:left; }
+    .hidden { display:none; }
+    input,select,textarea {
+      padding:6px; margin:4px 0; width:100%; border:1px solid #ccc; border-radius:4px;
+    }
+    .filters { margin-bottom:20px; display:flex; gap:10px; flex-wrap:wrap; }
+    .star { color:gold; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><a href="#" onclick="showPage('home')"> E-commerce Store</a></h1>
+    <nav>
+      <a href="#" onclick="showPage('home')">Home</a>
+      <a href="#" onclick="showPage('wishlist')"> Wishlist (<span id="wish-count">0</span>)</a>
+      <a href="#" onclick="showPage('cart')"> Cart (<span id="cart-count">0</span>)</a>
+      <a href="#" onclick="showPage('login')"><span id="user-display">Login</span></a>
+    </nav>
+  </header>
+
+  <!-- Home / Products -->
+  <div id="home" class="container">
+    <h1>Products</h1>
+    <div class="filters">
+      <input type="text" id="search" placeholder="Search..." oninput="applyFilters()">
+      <select id="category" onchange="applyFilters()">
+        <option value="">All Categories</option>
+        <option>Shirts</option><option>Pants</option><option>Shoes</option>
+        <option>Accessories</option><option>Electronics</option>
+      </select>
+      <select id="sort" onchange="applyFilters()">
+        <option value="">Sort By</option>
+        <option value="low">Price: Low → High</option>
+        <option value="high">Price: High → Low</option>
+      </select>
+    </div>
+    <div id="product-list" class="products"></div>
+  </div>
+
+  <!-- Product Detail -->
+  <div id="product-page" class="container hidden">
+    <div id="product-detail"></div>
+    
+    <button onclick="showPage('home')"> Back</button>
+  </div>
+
+  <!-- Cart -->
+  <div id="cart" class="container hidden">
+    <h2>Your Cart</h2>
+    <div id="cart-section"></div>
+
+    <button onclick="showPage('home')"> Continue Shopping</button>
+  </div>
+
+  <!-- Wishlist -->
+  <div id="wishlist" class="container hidden">
+    <h2>Your Wishlist</h2>
+    <div id="wish-section"></div>
+
+    <button onclick="showPage('home')"> Back</button>
+  </div>
+
+  <!-- Login -->
+  <div id="login" class="container hidden">
+    <h2>Login / Signup</h2>
+    <input id="user" placeholder="Username">
+    <input id="pass" placeholder="Password" type="password">
+    <button onclick="signup()">Signup</button>
+    <button onclick="login()">Login</button>
+  </div>
+
+<script>
+/* ==================== DATA ==================== */
+const products = [
+  {id:1,name:"Red T-Shirt",price:19.99,desc:"Cotton T-shirt",cat:"Shirts",img:"red.jpg"},
+  {id:2,name:"Blue Jeans",price:49.99,desc:"Stylish denim",cat:"Pants",img:"blue.jpg"},
+  {id:3,name:"Sneakers",price:79.99,desc:"Running shoes",cat:"Shoes",img:"sneakers.webp"},
+  {id:4,name:"Black Hoodie",price:39.99,desc:"Warm hoodie",cat:"Shirts",img:"hoodies.jpg"},
+  {id:5,name:"Baseball Cap",price:14.99,desc:"Adjustable cap",cat:"Accessories",img:"caps.jpg"},
+  {id:6,name:"Wrist Watch",price:129.99,desc:"Leather watch",cat:"Accessories",img:"watch.jpg"},
+  {id:7,name:"Backpack",price:59.99,desc:"Travel backpack",cat:"Accessories",img:"bags.jpg"},
+  {id:8,name:"White Sneakers",price:89.99,desc:"Lifestyle shoes",cat:"Shoes",img:"whitesneakers.jpg"},
+  {id:9,name:"Formal Shirt",price:29.99,desc:"Office shirt",cat:"Shirts",img:"formalshirts.jpg"},
+  {id:10,name:"Joggers",price:34.99,desc:"Sweatpants",cat:"Pants",img:"jogger.jpg"},
+  {id:11,name:"Leather Belt",price:24.99,desc:"Brown belt",cat:"Accessories",img:"belt.jpg"},
+  {id:12,name:"Sunglasses",price:19.99,desc:"UV Protection",cat:"Accessories",img:"glasses.jpg"},
+  {id:13,name:"Laptop",price:799.99,desc:"Powerful laptop",cat:"Electronics",img:"laptop.jpg"},
+  {id:14,name:"Headphones",price:59.99,desc:"Wireless headphones",cat:"Electronics",img:"headsphones.jpg"},
+  {id:15,name:"Smartphone",price:599.99,desc:"Latest smartphone",cat:"Electronics",img:"smartphones.jpg"},
+];
+
+/* ==================== STORAGE HELPERS ==================== */
+function getCart(){ return JSON.parse(localStorage.getItem("cart")||"{}"); }
+function saveCart(c){ localStorage.setItem("cart",JSON.stringify(c)); }
+function getWish(){ return JSON.parse(localStorage.getItem("wish")||"{}"); }
+function saveWish(w){ localStorage.setItem("wish",JSON.stringify(w)); }
+function getUsers(){ return JSON.parse(localStorage.getItem("users")||"{}"); }
+function saveUsers(u){ localStorage.setItem("users",JSON.stringify(u)); }
+function getCurrentUser(){ return localStorage.getItem("currentUser"); }
+function setCurrentUser(u){ localStorage.setItem("currentUser",u); }
+function getReviews(){ return JSON.parse(localStorage.getItem("reviews")||"{}"); }
+function saveReviews(r){ localStorage.setItem("reviews",JSON.stringify(r)); }
+
+/* ==================== PAGE NAVIGATION ==================== */
+function showPage(page,pid=null){
+  ["home","product-page","cart","wishlist","login"].forEach(p=>document.getElementById(p).classList.add("hidden"));
+  if(page==="home"){applyFilters();document.getElementById("home").classList.remove("hidden");}
+  else if(page==="product"){renderProductDetail(pid);document.getElementById("product-page").classList.remove("hidden");}
+  else if(page==="cart"){renderCart();document.getElementById("cart").classList.remove("hidden");}
+  else if(page==="wishlist"){renderWish();document.getElementById("wishlist").classList.remove("hidden");}
+  else if(page==="login"){document.getElementById("login").classList.remove("hidden");}
+}
+
+/* ==================== PRODUCTS ==================== */
+function applyFilters(){
+  let list=document.getElementById("product-list"); list.innerHTML="";
+  let search=document.getElementById("search").value.toLowerCase();
+  let cat=document.getElementById("category").value; let sort=document.getElementById("sort").value;
+  let items=products.filter(p=>p.name.toLowerCase().includes(search) && (!cat||p.cat===cat));
+  if(sort==="low") items.sort((a,b)=>a.price-b.price);
+  if(sort==="high") items.sort((a,b)=>b.price-a.price);
+  items.forEach(p=>{
+    let div=document.createElement("div"); div.className="card";
+    div.innerHTML=`
+      <img src="${p.img}" alt="${p.name}">
+      <h3>${p.name}</h3><p>${p.desc}</p>
+      <p><strong>$${p.price.toFixed(2)}</strong></p>
+      <p>${renderStars(p.id)}</p>
+      <button onclick="showPage('product',${p.id})">View</button>
+      <button onclick="toggleWish(${p.id})">${getWish()[p.id]?"❤️":"🤍"}</button>
+    `;
+    list.appendChild(div);
+  });
+  updateCounts();
+}
+
+/* ==================== PRODUCT DETAIL ==================== */
+function renderProductDetail(pid){
+  let p=products.find(x=>x.id===pid);
+  let c=document.getElementById("product-detail");
+  if(!p){c.innerHTML="<p>Not found</p>";return;}
+  c.innerHTML=`
+    <img src="${p.img}" style="max-width:300px;border-radius:8px;"><h2>${p.name}</h2>
+    <p>${p.desc}</p><p><strong>$${p.price.toFixed(2)}</strong></p>
+    <p>${renderStars(pid)}</p>
+    <button onclick="addToCart(${p.id})">Add to Cart</button>
+    <button onclick="toggleWish(${p.id})">${getWish()[p.id]?"❤️ Remove":"🤍 Wishlist"}</button>
+    <h3>Reviews</h3><div id="reviews"></div>
+    <div id="review-form">
+      <select id="review-rating">
+        <option value="5">★★★★★</option><option value="4">★★★★☆</option>
+        <option value="3">★★★☆☆</option><option value="2">★★☆☆☆</option>
+        <option value="1">★☆☆☆☆</option>
+      </select><br>
+      <textarea id="review-text" placeholder="Write a review..." rows="3"></textarea><br>
+      <button onclick="submitReview(${p.id})">Submit Review</button>
+    </div>
+  `;
+  renderReviews(pid);
+}
+
+/* ==================== REVIEWS ==================== */
+function renderStars(pid){
+  let rev=getReviews()[pid]||[]; if(!rev.length) return "No reviews";
+  let avg=rev.reduce((a,r)=>a+r.rating,0)/rev.length;
+  return "★".repeat(Math.round(avg))+"☆".repeat(5-Math.round(avg))+` (${rev.length})`;
+}
+function renderReviews(pid){
+  let rev=getReviews()[pid]||[]; let c=document.getElementById("reviews");
+  if(!rev.length){c.innerHTML="<p>No reviews yet.</p>";return;}
+  c.innerHTML=rev.map(r=>`<p><b>${r.user}</b> - ${"★".repeat(r.rating)}${"☆".repeat(5-r.rating)}<br>${r.text}</p>`).join("");
+}
+function submitReview(pid){
+  if(!getCurrentUser()){alert("Login required");showPage("login");return;}
+  let rating=parseInt(document.getElementById("review-rating").value);
+  let text=document.getElementById("review-text").value.trim(); if(!text){alert("Write something");return;}
+  let rev=getReviews(); if(!rev[pid]) rev[pid]=[];
+  rev[pid].push({user:getCurrentUser(),rating,text}); saveReviews(rev);
+  document.getElementById("review-text").value=""; renderReviews(pid); applyFilters();
+}
+
+/* ==================== CART ==================== */
+function addToCart(pid){let c=getCart(); if(!c[pid])c[pid]={...products.find(p=>p.id===pid),qty:0}; c[pid].qty++; saveCart(c); updateCounts(); alert("Added!");}
+function renderCart(){
+  let c=getCart(); let s=document.getElementById("cart-section");
+  if(!Object.keys(c).length){s.innerHTML="<p>Empty cart</p>";return;}
+  let t=0,html="<table><tr><th>Product</th><th>Qty</th><th>Price</th><th>Subtotal</th><th></th></tr>";
+  for(let it of Object.values(c)){let sub=it.qty*it.price;t+=sub;
+    html+=`<tr><td>${it.name}</td><td>${it.qty}</td><td>$${it.price.toFixed(2)}</td><td>$${sub.toFixed(2)}</td><td><button onclick="removeFromCart(${it.id})">Remove</button></td></tr>`;
+  }
+  html+=`</table><h3>Total: $${t.toFixed(2)}</h3><button onclick="checkout()">Checkout</button>`;
+  s.innerHTML=html;
+}
+function removeFromCart(pid){let c=getCart(); if(!c[pid])return; c[pid].qty--; if(c[pid].qty<=0)delete c[pid]; saveCart(c); renderCart(); updateCounts();}
+function checkout(){alert("Order placed (demo)."); localStorage.removeItem("cart"); renderCart(); updateCounts();}
+
+/* ==================== WISHLIST ==================== */
+function toggleWish(pid){let w=getWish(); if(w[pid]) delete w[pid]; else w[pid]=products.find(p=>p.id===pid); saveWish(w); applyFilters();}
+function renderWish(){let w=getWish(); let s=document.getElementById("wish-section");
+  if(!Object.keys(w).length){s.innerHTML="<p>Empty wishlist</p>";return;}
+  s.innerHTML=Object.values(w).map(it=>`<div class="card"><img src="${it.img}"><h3>${it.name}</h3><p>$${it.price}</p><button onclick="addToCart(${it.id})">Add to Cart</button><button onclick="toggleWish(${it.id})">Remove</button></div>`).join("");
+}
+
+/* ==================== LOGIN ==================== */
+function signup(){let u=document.getElementById("user").value,p=document.getElementById("pass").value; if(!u||!p){alert("Fill fields");return;}
+  let users=getUsers(); if(users[u]){alert("User exists");return;} users[u]=p; saveUsers(users); alert("Signed up! Now login.");}
+function login(){let u=document.getElementById("user").value,p=document.getElementById("pass").value; let users=getUsers();
+  if(users[u]!==p){alert("Wrong credentials");return;} setCurrentUser(u); alert("Logged in"); showPage("home"); updateCounts();}
+function updateCounts(){let c=getCart(),w=getWish(); document.getElementById("cart-count").textContent=Object.values(c).reduce((a,x)=>a+x.qty,0); document.getElementById("wish-count").textContent=Object.keys(w).length; document.getElementById("user-display").textContent=getCurrentUser()||"Login";}
+
+/* ==================== INIT ==================== */
+applyFilters(); updateCounts();
+</script>
+</body>
+</html>
